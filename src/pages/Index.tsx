@@ -5,9 +5,12 @@ import { AdvantageBar } from "@/components/game/AdvantageBar";
 import { CombatLog } from "@/components/game/CombatLog";
 import { GambitQueue } from "@/components/game/GambitQueue";
 import { HelpModal } from "@/components/game/HelpModal";
+import { Player } from "@/components/game/Player";
 import { GameConfigComponent } from "@/components/game/GameConfig";
 import { GameConfig, GameState, RoundEffect, GameConcept, GameRules } from "@/types/game";
+import { playSound } from "@/lib/audio";
 import { buildRules, getOutcome, getRandomConcept, shuffleArray } from "@/lib/gameLogic";
+import { motion } from 'framer-motion';
 import { Settings, HelpCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,7 +48,12 @@ const Index = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const [playerState, setPlayerState] = useState<'idle' | 'hit' | 'attacking'>('idle');
+  const [enemyState, setEnemyState] = useState<'idle' | 'hit' | 'attacking'>('idle');
+  const [isShaking, setIsShaking] = useState(false);
+
   const initializeGame = () => {
+    playSound('game-start');
     const newConcept = getRandomConcept();
     setConcept(newConcept);
     setGameRules(buildRules(newConcept.actions, newConcept.expPlaceholder));
@@ -122,6 +130,20 @@ const Index = () => {
     
     setRoundEffect({ player: playerChange < 0, enemy: cpuChange < 0 });
     setTimeout(() => setRoundEffect(null), 500);
+
+    setPlayerState(playerChange < 0 ? 'hit' : 'idle');
+    setEnemyState(cpuChange < 0 ? 'hit' : 'idle');
+
+    if (playerChange < 0 || cpuChange < 0) {
+      playSound('hit');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 300);
+    }
+
+    setTimeout(() => {
+      setPlayerState('idle');
+      setEnemyState('idle');
+    }, 500);
     
     const pAdvStr = `${playerChange >= 0 ? '+' : ''}${playerChange}`;
     const cAdvStr = `${cpuChange >= 0 ? '+' : ''}${cpuChange}`;
@@ -137,6 +159,7 @@ const Index = () => {
     if (cpuAdvantage <= 0 && playerAdvantage > 0) {
       if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
         setGameState('victory');
+        playSound('victory');
         toast.success("Victory!", { description: "You've defeated all enemies!" });
         return true;
       } else {
@@ -150,6 +173,7 @@ const Index = () => {
         toast.error("Draw", { description: "Mutual destruction!" });
       } else {
         setHistoryLog(prev => [...prev, "<b>You were defeated.</b>"]);
+        playSound('defeat');
         toast.error(concept?.defeatMsg || "Defeated!");
       }
       return true;
@@ -191,12 +215,12 @@ const Index = () => {
     
     for (let i = 0; i < config.gambitQueueSize; i++) {
       setCurrentGambitTurn(i);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       if (gameState !== 'playing') break;
       
       processTurn(playerQueue[i], cpuQueue[i]);
-      await new Promise(resolve => setTimeout(resolve, 1250));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (checkWinLoss()) break;
     }
@@ -209,6 +233,10 @@ const Index = () => {
 
   const playRound = (playerAction: string) => {
     if (gameState !== 'playing' || isProcessing || !concept) return;
+
+    playSound('action');
+    setPlayerState('attacking');
+    setEnemyState('attacking');
     
     if (config.gambitQueueSize > 1) {
       if (playerQueue.length < config.gambitQueueSize) {
@@ -223,8 +251,11 @@ const Index = () => {
     }
     
     const cpuAction = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
-    processTurn(playerAction, cpuAction);
-    setTimeout(checkWinLoss, 1000);
+
+    setTimeout(() => {
+      processTurn(playerAction, cpuAction);
+      setTimeout(checkWinLoss, 500);
+    }, 750);
   };
 
   if (appState === 'menu') {
@@ -244,8 +275,20 @@ const Index = () => {
 
   const themeKey = concept.themeKey;
 
+  const shakeVariants = {
+    shaking: {
+      x: [-5, 5, -5, 5, 0],
+      transition: { duration: 0.3 }
+    },
+    idle: { x: 0 }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 p-4">
+    <motion.div
+      className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 p-4"
+      variants={shakeVariants}
+      animate={isShaking ? "shaking" : "idle"}
+    >
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -316,6 +359,11 @@ const Index = () => {
 
           {/* Center Column - Actions & Status */}
           <div className="lg:col-span-2 space-y-6">
+            <div className="flex justify-around items-center p-4">
+              <Player isPlayer={true} state={playerState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
+              <Player isPlayer={false} state={enemyState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
+            </div>
+
             <CombatLog history={historyLog} themeKey={themeKey} />
 
             {gameState === 'playing' && (
@@ -367,7 +415,7 @@ const Index = () => {
         actions={concept.actions}
         expPlaceholder={concept.expPlaceholder}
       />
-    </div>
+    </motion.div>
   );
 };
 

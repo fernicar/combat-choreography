@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,17 +17,21 @@ export function ActionCard({ action, disabled, onAction, themeKey, isDisabledByE
     brawling: 'from-theme-brawling-primary to-theme-brawling-secondary'
   };
 
+  const MotionButton = motion(Button);
+
   return (
-    <Button
+    <MotionButton
       onClick={() => onAction(action)}
       disabled={disabled || isDisabledByEnemy}
       className={cn(
-        "h-24 text-lg font-bold relative overflow-hidden group transition-all duration-300",
-        "bg-gradient-to-br shadow-lg hover:shadow-2xl",
+        "h-24 text-lg font-bold relative overflow-hidden group",
+        "bg-gradient-to-br shadow-lg",
         !disabled && !isDisabledByEnemy && themeColors[themeKey],
-        !disabled && !isDisabledByEnemy && "hover:scale-105 hover:-translate-y-1",
         (disabled || isDisabledByEnemy) && "opacity-40 cursor-not-allowed bg-muted"
       )}
+      whileHover={{ scale: 1.05, y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.2)" }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <span className="relative z-10">{action}</span>
       {!disabled && !isDisabledByEnemy && (
@@ -37,6 +42,6 @@ export function ActionCard({ action, disabled, onAction, themeKey, isDisabledByE
           <span className="text-xs font-normal">Sabotaged</span>
         </div>
       )}
-    </Button>
+    </MotionButton>
   );
 }
