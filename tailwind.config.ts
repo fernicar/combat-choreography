@@ -31,6 +31,10 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -47,16 +51,27 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        theme: {
+          dogfight: {
+            primary: "hsl(var(--theme-dogfight-primary))",
+            secondary: "hsl(var(--theme-dogfight-secondary))",
+            accent: "hsl(var(--theme-dogfight-accent))",
+          },
+          magic: {
+            primary: "hsl(var(--theme-magic-primary))",
+            secondary: "hsl(var(--theme-magic-secondary))",
+            accent: "hsl(var(--theme-magic-accent))",
+          },
+          brawling: {
+            primary: "hsl(var(--theme-brawling-primary))",
+            secondary: "hsl(var(--theme-brawling-secondary))",
+            accent: "hsl(var(--theme-brawling-accent))",
+          },
         },
+      },
+      backgroundImage: {
+        'gradient-battle': 'var(--gradient-battle)',
+        'gradient-impact': 'var(--gradient-impact)',
       },
       borderRadius: {
         lg: "var(--radius)",
