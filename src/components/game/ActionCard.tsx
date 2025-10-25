@@ -10,14 +10,14 @@ interface ActionCardProps {
   isDisabledByEnemy?: boolean;
 }
 
+const MotionButton = motion(Button);
+
 export function ActionCard({ action, disabled, onAction, themeKey, isDisabledByEnemy }: ActionCardProps) {
   const themeColors = {
     dogflight: 'from-theme-dogfight-primary to-theme-dogflight-secondary',
     magic: 'from-theme-magic-primary to-theme-magic-secondary',
     brawling: 'from-theme-brawling-primary to-theme-brawling-secondary'
   };
-
-  const MotionButton = motion(Button);
 
   return (
     <MotionButton
