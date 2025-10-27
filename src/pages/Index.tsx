@@ -241,19 +241,36 @@ const Index = () => {
     if (!concept) return;
     
     setIsProcessing(true);
-    
-    for (let i = 0; i < config.gambitQueueSize; i++) {
+
+    // Snapshot queues to avoid mutation/race conditions
+    const pQueue = [...playerQueue];
+    const cQueue = [...cpuQueue];
+    const turns = Math.min(config.gambitQueueSize, pQueue.length, cQueue.length);
+
+    for (let i = 0; i < turns; i++) {
       setCurrentGambitTurn(i);
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (gameState !== 'playing') break;
-      
-      processTurn(playerQueue[i], cpuQueue[i]);
+
+      const pAction = pQueue[i];
+      const cAction = cQueue[i];
+      if (!pAction || !cAction) {
+        // Safety guard - skip if actions are missing
+        continue;
+      }
+
+      processTurn(pAction, cAction);
+      // Allow time for outcome computation and animations
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       if (checkWinLoss()) break;
     }
-    
+
+    // Grace period so last damage reflects before cleanup
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Reset UI state for next gambit
     setCurrentGambitTurn(-1);
     setPlayerQueue([]);
     setCpuQueue([]);
@@ -270,9 +287,13 @@ const Index = () => {
     if (config.gambitQueueSize > 1) {
       if (playerQueue.length < config.gambitQueueSize) {
         setPlayerQueue(prev => [...prev, playerAction]);
-        setCpuQueue(prev => [...prev, config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions)]);
-        
-        if (playerQueue.length === config.gambitQueueSize - 1) {
+        setCpuQueue(prev => [
+          ...prev,
+          config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions)
+        ]);
+
+        const nextLength = playerQueue.length + 1;
+        if (nextLength === config.gambitQueueSize) {
           setTimeout(resolveGambit, 100);
         }
       }
