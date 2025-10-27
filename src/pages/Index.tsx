@@ -7,12 +7,19 @@ import { GambitQueue } from "@/components/game/GambitQueue";
 import { HelpModal } from "@/components/game/HelpModal";
 import { Player } from "@/components/game/Player";
 import { GameConfigComponent } from "@/components/game/GameConfig";
+import { CharacterSprite } from "@/components/game/CharacterSprite";
 import { GameConfig, GameState, RoundEffect, GameConcept, GameRules } from "@/types/game";
 import { playSound } from "@/lib/audio";
 import { buildRules, getOutcome, getRandomConcept, shuffleArray } from "@/lib/gameLogic";
 import { motion } from 'framer-motion';
 import { Settings, HelpCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { playActionSound, soundPlayer } from "@/lib/sounds";
+
+// Import backgrounds
+import bgDogfight from "@/assets/bg-dogfight.png";
+import bgMagic from "@/assets/bg-magic.png";
+import bgBrawling from "@/assets/bg-brawling.png";
 
 const defaultConfig: GameConfig = {
   numEnemies: 4,
@@ -47,6 +54,9 @@ const Index = () => {
   
   const [showHelp, setShowHelp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  const [playerSpriteState, setPlayerSpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
+  const [enemySpriteState, setEnemySpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
 
   const [playerState, setPlayerState] = useState<'idle' | 'hit' | 'attacking'>('idle');
   const [enemyState, setEnemyState] = useState<'idle' | 'hit' | 'attacking'>('idle');
@@ -117,17 +127,13 @@ const Index = () => {
   };
 
   const processTurn = (playerAction: string, cpuAction: string) => {
-    if (!gameRules) return;
+    if (!gameRules || !concept || !playerAction || !cpuAction) return;
     
-    const outcome = getOutcome(playerAction, cpuAction, gameRules);
-    const [playerChange, cpuChange] = outcome;
+    // Play action sounds
+    playActionSound(playerAction, concept.themeKey);
+    setTimeout(() => playActionSound(cpuAction, concept.themeKey), 200);
     
-    const newPlayerAdv = playerAdvantage + playerChange;
-    const newCpuAdv = cpuAdvantage + cpuChange;
-    
-    setPlayerAdvantage(newPlayerAdv);
-    setCpuAdvantage(newCpuAdv);
-    
+
     setRoundEffect({ player: playerChange < 0, enemy: cpuChange < 0 });
     setTimeout(() => setRoundEffect(null), 500);
 
@@ -144,31 +150,76 @@ const Index = () => {
       setPlayerState('idle');
       setEnemyState('idle');
     }, 500);
+
+<!--     // Animate sprites
+    setPlayerSpriteState('attack');
+    setTimeout(() => setEnemySpriteState('attack'), 200); -->
+
     
-    const pAdvStr = `${playerChange >= 0 ? '+' : ''}${playerChange}`;
-    const cAdvStr = `${cpuChange >= 0 ? '+' : ''}${cpuChange}`;
-    
-    const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>
-      Player: ${playerAdvantage}→${newPlayerAdv} (${pAdvStr}) | 
-      Enemy: ${cpuAdvantage}→${newCpuAdv} (${cAdvStr})`;
-    
-    setHistoryLog(prev => [...prev, roundSummary]);
+    setTimeout(() => {
+      const outcome = getOutcome(playerAction, cpuAction, gameRules);
+      const [playerChange, cpuChange] = outcome;
+      
+      const newPlayerAdv = playerAdvantage + playerChange;
+      const newCpuAdv = cpuAdvantage + cpuChange;
+      
+      // Hit reactions
+      if (playerChange < 0) {
+        setPlayerSpriteState('hit');
+        soundPlayer.hitImpact(playerChange);
+      }
+      if (cpuChange < 0) {
+        setEnemySpriteState('hit');
+        soundPlayer.hitImpact(cpuChange);
+      }
+      
+      setPlayerAdvantage(newPlayerAdv);
+      setCpuAdvantage(newCpuAdv);
+      
+      setRoundEffect({ player: playerChange < 0, enemy: cpuChange < 0 });
+      setTimeout(() => setRoundEffect(null), 500);
+      
+      const pAdvStr = `${playerChange >= 0 ? '+' : ''}${playerChange}`;
+      const cAdvStr = `${cpuChange >= 0 ? '+' : ''}${cpuChange}`;
+      
+      const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>
+        Player: ${playerAdvantage}→${newPlayerAdv} (${pAdvStr}) | 
+        Enemy: ${cpuAdvantage}→${newCpuAdv} (${cAdvStr})`;
+      
+      setHistoryLog(prev => [...prev, roundSummary]);
+    }, 400);
   };
 
   const checkWinLoss = () => {
     if (cpuAdvantage <= 0 && playerAdvantage > 0) {
+      setEnemySpriteState('defeat');
+      soundPlayer.enemyDefeated();
+      
       if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
         setGameState('victory');
-        playSound('victory');
+
+<!--         playSound('victory'); -->
+
+        setPlayerSpriteState('victory');
+        soundPlayer.victory();
+
         toast.success("Victory!", { description: "You've defeated all enemies!" });
         return true;
       } else {
-        nextEnemy();
+        setTimeout(() => {
+          setPlayerSpriteState('idle');
+          setEnemySpriteState('idle');
+          nextEnemy();
+        }, 800);
         return true;
       }
     } else if (playerAdvantage <= 0 || (cpuAdvantage <= 0 && playerAdvantage <= 0)) {
       setGameState('game_over');
+      setPlayerSpriteState('defeat');
+      soundPlayer.defeat();
+      
       if (cpuAdvantage <= 0 && playerAdvantage <= 0) {
+        setEnemySpriteState('defeat');
         setHistoryLog(prev => [...prev, "<b>Mutual destruction.</b>"]);
         toast.error("Draw", { description: "Mutual destruction!" });
       } else {
@@ -274,6 +325,12 @@ const Index = () => {
   if (!concept || !gameRules) return null;
 
   const themeKey = concept.themeKey;
+  
+  const backgrounds = {
+    dogflight: bgDogfight,
+    magic: bgMagic,
+    brawling: bgBrawling,
+  };
 
   const shakeVariants = {
     shaking: {
@@ -290,6 +347,18 @@ const Index = () => {
       animate={isShaking ? "shaking" : "idle"}
     >
       <div className="max-w-6xl mx-auto space-y-6">
+
+<!--     <div 
+      className="min-h-screen p-4 relative"
+      style={{
+        backgroundImage: `url(${backgrounds[themeKey]})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10"> -->
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
@@ -362,6 +431,28 @@ const Index = () => {
             <div className="flex justify-around items-center p-4">
               <Player isPlayer={true} state={playerState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
               <Player isPlayer={false} state={enemyState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
+<!--             {/* Character Sprites */}
+            <div className="bg-card/30 backdrop-blur-md rounded-lg border-2 border-primary/20 p-6">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="text-center">
+                  <CharacterSprite
+                    themeKey={themeKey}
+                    isPlayer={true}
+                    state={playerSpriteState}
+                    advantage={playerAdvantage}
+                  />
+                  <p className="text-sm font-semibold mt-2 text-success">PLAYER</p>
+                </div>
+                <div className="text-center">
+                  <CharacterSprite
+                    themeKey={themeKey}
+                    isPlayer={false}
+                    state={enemySpriteState}
+                    advantage={cpuAdvantage}
+                  />
+                  <p className="text-sm font-semibold mt-2 text-destructive">ENEMY {currentCpuIndex + 1}</p>
+                </div>
+              </div> -->
             </div>
 
             <CombatLog history={historyLog} themeKey={themeKey} />
