@@ -183,6 +183,8 @@ export const soundPlayer = new SoundGenerator();
 
 // Map action names to sound methods
 export function playActionSound(action: string, themeKey: string) {
+  if (!action) return; // Guard against undefined actions
+  
   const actionLower = action.toLowerCase().replace(/[\s-]/g, '');
   const themePrefix = themeKey === 'dogflight' ? 'dogflight' : themeKey;
   const methodName = `${themePrefix}${action.replace(/[\s-]/g, '')}`;

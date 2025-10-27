@@ -119,7 +119,7 @@ const Index = () => {
   };
 
   const processTurn = (playerAction: string, cpuAction: string) => {
-    if (!gameRules || !concept) return;
+    if (!gameRules || !concept || !playerAction || !cpuAction) return;
     
     // Play action sounds
     playActionSound(playerAction, concept.themeKey);
@@ -176,6 +176,7 @@ const Index = () => {
         return true;
       } else {
         setTimeout(() => {
+          setPlayerSpriteState('idle');
           setEnemySpriteState('idle');
           nextEnemy();
         }, 800);
