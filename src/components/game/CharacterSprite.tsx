@@ -1,13 +1,41 @@
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
-// Import sprites
-import dogfightPlayer from "@/assets/dogfight-player.png";
-import dogfightEnemy from "@/assets/dogfight-enemy.png";
-import magicPlayer from "@/assets/magic-player.png";
-import magicEnemy from "@/assets/magic-enemy.png";
-import brawlingPlayer from "@/assets/brawling-player.png";
-import brawlingEnemy from "@/assets/brawling-enemy.png";
+// Import dogfight sprites
+import dogfightPlayerIdle from "@/assets/dogfight_player_idle.jpeg";
+import dogfightPlayerAttack from "@/assets/dogfight_player_attack.png";
+import dogfightPlayerHit from "@/assets/dogfight_player_hit.png";
+import dogfightPlayerVictory from "@/assets/dogfight_player_victory.jpeg";
+import dogfightPlayerDefeat from "@/assets/dogfight_player_defeat.jpeg";
+import dogfightEnemyIdle from "@/assets/dogfight_enemy_idle.png";
+import dogfightEnemyAttack from "@/assets/dogfight_enemy_attack.png";
+import dogfightEnemyHit from "@/assets/dogfight_enemy_hit.png";
+import dogfightEnemyVictory from "@/assets/dogfight_enemy_victory.png";
+import dogfightEnemyDefeat from "@/assets/dogfight_enemy_defeat.png";
+
+// Import magic sprites
+import magicPlayerIdle from "@/assets/magic_player_idle.jpeg";
+import magicPlayerAttack from "@/assets/magic_player_attack.png";
+import magicPlayerHit from "@/assets/magic_player_hit.png";
+import magicPlayerVictory from "@/assets/magic_player_victory.jpeg";
+import magicPlayerDefeat from "@/assets/magic_player_defeat.jpeg";
+import magicEnemyIdle from "@/assets/magic_enemy_idle.png";
+import magicEnemyAttack from "@/assets/magic_enemy_attack.png";
+import magicEnemyHit from "@/assets/magic_enemy_hit.png";
+import magicEnemyVictory from "@/assets/magic_enemy_victory.png";
+import magicEnemyDefeat from "@/assets/magic_enemy_defeat.png";
+
+// Import brawling sprites
+import brawlingPlayerIdle from "@/assets/brawling_player_idle.jpeg";
+import brawlingPlayerAttack from "@/assets/brawling_player_attack.png";
+import brawlingPlayerHit from "@/assets/brawling_player_hit.png";
+import brawlingPlayerVictory from "@/assets/brawling_player_victory.jpeg";
+import brawlingPlayerDefeat from "@/assets/brawling_player_defeat.jpeg";
+import brawlingEnemyIdle from "@/assets/brawling_enemy_idle.png";
+import brawlingEnemyAttack from "@/assets/brawling_enemy_attack.png";
+import brawlingEnemyHit from "@/assets/brawling_enemy_hit.png";
+import brawlingEnemyVictory from "@/assets/brawling_enemy_victory.png";
+import brawlingEnemyDefeat from "@/assets/brawling_enemy_defeat.png";
 
 interface CharacterSpriteProps {
   themeKey: 'dogflight' | 'magic' | 'brawling';
@@ -27,13 +55,59 @@ export function CharacterSprite({ themeKey, isPlayer, state, advantage }: Charac
     }
   }, [state]);
 
-  const sprites = {
-    dogflight: { player: dogfightPlayer, enemy: dogfightEnemy },
-    magic: { player: magicPlayer, enemy: magicEnemy },
-    brawling: { player: brawlingPlayer, enemy: brawlingEnemy },
+  const spriteMap = {
+    dogflight: {
+      player: {
+        idle: dogfightPlayerIdle,
+        attack: dogfightPlayerAttack,
+        hit: dogfightPlayerHit,
+        victory: dogfightPlayerVictory,
+        defeat: dogfightPlayerDefeat,
+      },
+      enemy: {
+        idle: dogfightEnemyIdle,
+        attack: dogfightEnemyAttack,
+        hit: dogfightEnemyHit,
+        victory: dogfightEnemyVictory,
+        defeat: dogfightEnemyDefeat,
+      },
+    },
+    magic: {
+      player: {
+        idle: magicPlayerIdle,
+        attack: magicPlayerAttack,
+        hit: magicPlayerHit,
+        victory: magicPlayerVictory,
+        defeat: magicPlayerDefeat,
+      },
+      enemy: {
+        idle: magicEnemyIdle,
+        attack: magicEnemyAttack,
+        hit: magicEnemyHit,
+        victory: magicEnemyVictory,
+        defeat: magicEnemyDefeat,
+      },
+    },
+    brawling: {
+      player: {
+        idle: brawlingPlayerIdle,
+        attack: brawlingPlayerAttack,
+        hit: brawlingPlayerHit,
+        victory: brawlingPlayerVictory,
+        defeat: brawlingPlayerDefeat,
+      },
+      enemy: {
+        idle: brawlingEnemyIdle,
+        attack: brawlingEnemyAttack,
+        hit: brawlingEnemyHit,
+        victory: brawlingEnemyVictory,
+        defeat: brawlingEnemyDefeat,
+      },
+    },
   };
 
-  const sprite = isPlayer ? sprites[themeKey].player : sprites[themeKey].enemy;
+  const characterSprites = isPlayer ? spriteMap[themeKey].player : spriteMap[themeKey].enemy;
+  const sprite = characterSprites[currentState];
   const isCritical = advantage <= 3;
 
   return (

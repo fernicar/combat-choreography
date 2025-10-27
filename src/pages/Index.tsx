@@ -133,28 +133,9 @@ const Index = () => {
     playActionSound(playerAction, concept.themeKey);
     setTimeout(() => playActionSound(cpuAction, concept.themeKey), 200);
     
-
-    setRoundEffect({ player: playerChange < 0, enemy: cpuChange < 0 });
-    setTimeout(() => setRoundEffect(null), 500);
-
-    setPlayerState(playerChange < 0 ? 'hit' : 'idle');
-    setEnemyState(cpuChange < 0 ? 'hit' : 'idle');
-
-    if (playerChange < 0 || cpuChange < 0) {
-      playSound('hit');
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 300);
-    }
-
-    setTimeout(() => {
-      setPlayerState('idle');
-      setEnemyState('idle');
-    }, 500);
-
-<!--     // Animate sprites
+    // Animate sprites
     setPlayerSpriteState('attack');
-    setTimeout(() => setEnemySpriteState('attack'), 200); -->
-
+    setTimeout(() => setEnemySpriteState('attack'), 200);
     
     setTimeout(() => {
       const outcome = getOutcome(playerAction, cpuAction, gameRules);
@@ -197,9 +178,6 @@ const Index = () => {
       
       if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
         setGameState('victory');
-
-<!--         playSound('victory'); -->
-
         setPlayerSpriteState('victory');
         soundPlayer.victory();
 
@@ -341,14 +319,7 @@ const Index = () => {
   };
 
   return (
-    <motion.div
-      className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 p-4"
-      variants={shakeVariants}
-      animate={isShaking ? "shaking" : "idle"}
-    >
-      <div className="max-w-6xl mx-auto space-y-6">
-
-<!--     <div 
+    <div 
       className="min-h-screen p-4 relative"
       style={{
         backgroundImage: `url(${backgrounds[themeKey]})`,
@@ -357,8 +328,12 @@ const Index = () => {
         backgroundAttachment: 'fixed',
       }}
     >
-      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
-      <div className="max-w-6xl mx-auto space-y-6 relative z-10"> -->
+      <motion.div 
+        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+        variants={shakeVariants}
+        animate={isShaking ? "shaking" : "idle"}
+      />
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
@@ -428,10 +403,7 @@ const Index = () => {
 
           {/* Center Column - Actions & Status */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-around items-center p-4">
-              <Player isPlayer={true} state={playerState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
-              <Player isPlayer={false} state={enemyState} themeKey={themeKey as 'dogflight' | 'magic' | 'brawling'} />
-<!--             {/* Character Sprites */}
+            {/* Character Sprites */}
             <div className="bg-card/30 backdrop-blur-md rounded-lg border-2 border-primary/20 p-6">
               <div className="grid grid-cols-2 gap-8">
                 <div className="text-center">
@@ -452,7 +424,7 @@ const Index = () => {
                   />
                   <p className="text-sm font-semibold mt-2 text-destructive">ENEMY {currentCpuIndex + 1}</p>
                 </div>
-              </div> -->
+              </div>
             </div>
 
             <CombatLog history={historyLog} themeKey={themeKey} />
@@ -506,7 +478,7 @@ const Index = () => {
         actions={concept.actions}
         expPlaceholder={concept.expPlaceholder}
       />
-    </motion.div>
+    </div>
   );
 };
 
