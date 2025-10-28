@@ -133,7 +133,7 @@ const Index = () => {
     playActionSound(playerAction, concept.themeKey);
     setTimeout(() => playActionSound(cpuAction, concept.themeKey), 200);
     
-    // Animate sprites
+    // Animate sprites - attack
     setPlayerSpriteState('attack');
     setTimeout(() => setEnemySpriteState('attack'), 200);
     
@@ -148,10 +148,15 @@ const Index = () => {
       if (playerChange < 0) {
         setPlayerSpriteState('hit');
         soundPlayer.hitImpact(playerChange);
+      } else {
+        setPlayerSpriteState('idle');
       }
+      
       if (cpuChange < 0) {
         setEnemySpriteState('hit');
         soundPlayer.hitImpact(cpuChange);
+      } else {
+        setEnemySpriteState('idle');
       }
       
       setPlayerAdvantage(newPlayerAdv);
