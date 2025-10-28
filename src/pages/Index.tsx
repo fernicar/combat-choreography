@@ -237,14 +237,14 @@ const Index = () => {
     toast.info("Next opponent!", { description: `Facing opponent #${nextIndex + 1}` });
   };
 
-  const resolveGambit = async () => {
+  const resolveGambit = async (pQueueArg?: string[], cQueueArg?: string[]) => {
     if (!concept) return;
     
     setIsProcessing(true);
 
-    // Snapshot queues to avoid mutation/race conditions
-    const pQueue = [...playerQueue];
-    const cQueue = [...cpuQueue];
+    // Use provided snapshots if available to avoid state timing issues
+    const pQueue = pQueueArg ?? [...playerQueue];
+    const cQueue = cQueueArg ?? [...cpuQueue];
     const turns = Math.min(config.gambitQueueSize, pQueue.length, cQueue.length);
 
     for (let i = 0; i < turns; i++) {
@@ -255,10 +255,7 @@ const Index = () => {
 
       const pAction = pQueue[i];
       const cAction = cQueue[i];
-      if (!pAction || !cAction) {
-        // Safety guard - skip if actions are missing
-        continue;
-      }
+      if (!pAction || !cAction) continue;
 
       processTurn(pAction, cAction);
       // Allow time for outcome computation and animations
@@ -268,7 +265,7 @@ const Index = () => {
     }
 
     // Grace period so last damage reflects before cleanup
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 150));
 
     // Reset UI state for next gambit
     setCurrentGambitTurn(-1);
@@ -286,15 +283,17 @@ const Index = () => {
     
     if (config.gambitQueueSize > 1) {
       if (playerQueue.length < config.gambitQueueSize) {
-        setPlayerQueue(prev => [...prev, playerAction]);
-        setCpuQueue(prev => [
-          ...prev,
-          config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions)
-        ]);
+        const cpuActionNext = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
+        const nextPlayerQueue = [...playerQueue, playerAction];
+        const nextCpuQueue = [...cpuQueue, cpuActionNext];
 
-        const nextLength = playerQueue.length + 1;
+        setPlayerQueue(nextPlayerQueue);
+        setCpuQueue(nextCpuQueue);
+
+        const nextLength = nextPlayerQueue.length;
         if (nextLength === config.gambitQueueSize) {
-          setTimeout(resolveGambit, 100);
+          // Run with snapshots to include the just-added final action
+          setTimeout(() => resolveGambit(nextPlayerQueue, nextCpuQueue), 50);
         }
       }
       return;

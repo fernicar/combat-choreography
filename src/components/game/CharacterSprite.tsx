@@ -123,7 +123,7 @@ export function CharacterSprite({ themeKey, isPlayer, state, advantage }: Charac
           currentState === 'victory' && "animate-bounce",
           currentState === 'defeat' && "animate-fade-out opacity-0",
           isCritical && "animate-shake-subtle",
-          !isPlayer && "scale-x-[-1]" // Flip enemy to face player
+          !isPlayer && "-scale-x-100" // Mirror enemy to face player
         )}
       />
       {currentState === 'attack' && (
