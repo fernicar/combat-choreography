@@ -115,6 +115,7 @@ export function CharacterSprite({ themeKey, isPlayer, state, advantage }: Charac
       <img
         src={sprite}
         alt={isPlayer ? "Player" : "Enemy"}
+        style={!isPlayer ? { transform: 'scaleX(-1)' } : undefined}
         className={cn(
           "h-40 w-40 object-contain transition-all duration-300",
           currentState === 'idle' && "animate-pulse-slow",
@@ -122,8 +123,7 @@ export function CharacterSprite({ themeKey, isPlayer, state, advantage }: Charac
           currentState === 'hit' && "animate-hit-recoil",
           currentState === 'victory' && "animate-bounce",
           currentState === 'defeat' && "animate-fade-out opacity-0",
-          isCritical && "animate-shake-subtle",
-          !isPlayer && "scale-x-[-1]" // Mirror enemy to face player
+          isCritical && "animate-shake-subtle"
         )}
       />
       {currentState === 'attack' && (
