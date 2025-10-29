@@ -53,6 +53,7 @@ const Index = () => {
   
   const [showHelp, setShowHelp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   
   const [playerSpriteState, setPlayerSpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
   const [enemySpriteState, setEnemySpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
@@ -127,69 +128,76 @@ const Index = () => {
 
   const processTurn = (playerAction: string, cpuAction: string) => {
     if (!gameRules || !concept || !playerAction || !cpuAction) return;
-    
-    // Calculate outcome first to determine animation sequence
-    const outcome = getOutcome(playerAction, cpuAction, gameRules);
-    const [playerChange, cpuChange] = outcome;
-    
-    // Determine who has the advantage in this exchange
-    const playerWinsExchange = playerChange > cpuChange;
-    const enemyWinsExchange = cpuChange > playerChange;
-    const isDraw = playerChange === cpuChange;
-    
-    // Phase 1: Attack animations (200ms)
-    if (playerWinsExchange || isDraw) {
-      setPlayerSpriteState('attack');
-      playActionSound(playerAction, concept.themeKey);
-    }
-    if (enemyWinsExchange || isDraw) {
-      setTimeout(() => {
-        setEnemySpriteState('attack');
-        playActionSound(cpuAction, concept.themeKey);
-      }, isDraw ? 0 : 200);
-    }
-    
-    // Phase 2: Hit reactions (400ms after attacks start)
+
+    // Block inputs during animation
+    setIsAnimating(true);
+
+    // Compute outcome and resulting advantages upfront
+    const [pDelta, cDelta] = getOutcome(playerAction, cpuAction, gameRules);
+    const newPlayerAdv = playerAdvantage + pDelta;
+    const newCpuAdv = cpuAdvantage + cDelta;
+
+    // spriteA (action) phase: attack only if opponent loses advantage
+    // act1 (first action) behaves like skip => stays idle
+    const act1 = concept.actions[0];
+    const playerShouldAttack = cDelta < 0 && playerAction !== act1;
+    const enemyShouldAttack = pDelta < 0 && cpuAction !== act1;
+
+    setPlayerSpriteState(playerShouldAttack ? 'attack' : 'idle');
+    if (playerShouldAttack) playActionSound(playerAction, concept.themeKey);
+
     setTimeout(() => {
-      const newPlayerAdv = playerAdvantage + playerChange;
-      const newCpuAdv = cpuAdvantage + cpuChange;
-      
-      // Apply hit states based on damage taken
-      if (playerChange < 0) {
+      setEnemySpriteState(enemyShouldAttack ? 'attack' : 'idle');
+      if (enemyShouldAttack) playActionSound(cpuAction, concept.themeKey);
+    }, 150);
+
+    // spriteB (outcome) phase
+    setTimeout(() => {
+      // Player spriteB outcome
+      if (newPlayerAdv <= 0) {
+        setPlayerSpriteState('defeat');
+      } else if (newCpuAdv <= 0) {
+        setPlayerSpriteState('victory');
+      } else if (pDelta <= -2) {
         setPlayerSpriteState('hit');
-        soundPlayer.hitImpact(playerChange);
-      } else if (!playerWinsExchange && !isDraw) {
-        setPlayerSpriteState('idle');
+        soundPlayer.hitImpact(pDelta);
+      } else {
+        setPlayerSpriteState('idle'); // -1 => idle, +advantage => idle
       }
-      
-      if (cpuChange < 0) {
+
+      // Enemy spriteB outcome
+      if (newCpuAdv <= 0) {
+        setEnemySpriteState('defeat');
+      } else if (newPlayerAdv <= 0) {
+        setEnemySpriteState('victory');
+      } else if (cDelta <= -2) {
         setEnemySpriteState('hit');
-        soundPlayer.hitImpact(cpuChange);
-      } else if (!enemyWinsExchange && !isDraw) {
+        soundPlayer.hitImpact(cDelta);
+      } else {
         setEnemySpriteState('idle');
       }
-      
+
+      // Apply state updates and log
       setPlayerAdvantage(newPlayerAdv);
       setCpuAdvantage(newCpuAdv);
-      
-      setRoundEffect({ player: playerChange < 0, enemy: cpuChange < 0 });
+      setRoundEffect({ player: pDelta <= -2, enemy: cDelta <= -2 });
       setTimeout(() => setRoundEffect(null), 500);
-      
-      const pAdvStr = `${playerChange >= 0 ? '+' : ''}${playerChange}`;
-      const cAdvStr = `${cpuChange >= 0 ? '+' : ''}${cpuChange}`;
-      
+
+      const pAdvStr = `${pDelta >= 0 ? '+' : ''}${pDelta}`;
+      const cAdvStr = `${cDelta >= 0 ? '+' : ''}${cDelta}`;
       const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>
         Player: ${playerAdvantage}→${newPlayerAdv} (${pAdvStr}) | 
         Enemy: ${cpuAdvantage}→${newCpuAdv} (${cAdvStr})`;
-      
       setHistoryLog(prev => [...prev, roundSummary]);
-      
-      // Phase 3: Return to idle after hit reaction (700ms after hit)
+
+      // Return to idle if no defeat/victory, then allow input
+      const someoneDefeated = newPlayerAdv <= 0 || newCpuAdv <= 0;
       setTimeout(() => {
-        if (newPlayerAdv > 0 && newCpuAdv > 0) {
+        if (!someoneDefeated) {
           setPlayerSpriteState('idle');
           setEnemySpriteState('idle');
         }
+        setIsAnimating(false);
       }, 700);
     }, 400);
   };
@@ -308,7 +316,7 @@ const Index = () => {
   };
 
   const playRound = (playerAction: string) => {
-    if (gameState !== 'playing' || isProcessing || !concept) return;
+    if (gameState !== 'playing' || isProcessing || isAnimating || !concept) return;
 
     playSound('action');
     setPlayerState('attacking');
