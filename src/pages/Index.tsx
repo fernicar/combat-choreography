@@ -128,33 +128,44 @@ const Index = () => {
   const processTurn = (playerAction: string, cpuAction: string) => {
     if (!gameRules || !concept || !playerAction || !cpuAction) return;
     
-    // Play action sounds
-    playActionSound(playerAction, concept.themeKey);
-    setTimeout(() => playActionSound(cpuAction, concept.themeKey), 200);
+    // Calculate outcome first to determine animation sequence
+    const outcome = getOutcome(playerAction, cpuAction, gameRules);
+    const [playerChange, cpuChange] = outcome;
     
-    // Animate sprites - attack
-    setPlayerSpriteState('attack');
-    setTimeout(() => setEnemySpriteState('attack'), 200);
+    // Determine who has the advantage in this exchange
+    const playerWinsExchange = playerChange > cpuChange;
+    const enemyWinsExchange = cpuChange > playerChange;
+    const isDraw = playerChange === cpuChange;
     
+    // Phase 1: Attack animations (200ms)
+    if (playerWinsExchange || isDraw) {
+      setPlayerSpriteState('attack');
+      playActionSound(playerAction, concept.themeKey);
+    }
+    if (enemyWinsExchange || isDraw) {
+      setTimeout(() => {
+        setEnemySpriteState('attack');
+        playActionSound(cpuAction, concept.themeKey);
+      }, isDraw ? 0 : 200);
+    }
+    
+    // Phase 2: Hit reactions (400ms after attacks start)
     setTimeout(() => {
-      const outcome = getOutcome(playerAction, cpuAction, gameRules);
-      const [playerChange, cpuChange] = outcome;
-      
       const newPlayerAdv = playerAdvantage + playerChange;
       const newCpuAdv = cpuAdvantage + cpuChange;
       
-      // Hit reactions
+      // Apply hit states based on damage taken
       if (playerChange < 0) {
         setPlayerSpriteState('hit');
         soundPlayer.hitImpact(playerChange);
-      } else {
+      } else if (!playerWinsExchange && !isDraw) {
         setPlayerSpriteState('idle');
       }
       
       if (cpuChange < 0) {
         setEnemySpriteState('hit');
         soundPlayer.hitImpact(cpuChange);
-      } else {
+      } else if (!enemyWinsExchange && !isDraw) {
         setEnemySpriteState('idle');
       }
       
@@ -172,22 +183,36 @@ const Index = () => {
         Enemy: ${cpuAdvantage}→${newCpuAdv} (${cAdvStr})`;
       
       setHistoryLog(prev => [...prev, roundSummary]);
+      
+      // Phase 3: Return to idle after hit reaction (700ms after hit)
+      setTimeout(() => {
+        if (newPlayerAdv > 0 && newCpuAdv > 0) {
+          setPlayerSpriteState('idle');
+          setEnemySpriteState('idle');
+        }
+      }, 700);
     }, 400);
   };
 
   const checkWinLoss = () => {
-    if (cpuAdvantage <= 0 && playerAdvantage > 0) {
+    // Check for defeat/victory conditions
+    const playerDefeated = playerAdvantage <= 0;
+    const enemyDefeated = cpuAdvantage <= 0;
+    
+    if (enemyDefeated && !playerDefeated) {
+      // Enemy defeated, player survives
       setEnemySpriteState('defeat');
       soundPlayer.enemyDefeated();
       
       if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
+        // Final victory
         setGameState('victory');
         setPlayerSpriteState('victory');
         soundPlayer.victory();
-
         toast.success("Victory!", { description: "You've defeated all enemies!" });
         return true;
       } else {
+        // Next enemy
         setTimeout(() => {
           setPlayerSpriteState('idle');
           setEnemySpriteState('idle');
@@ -195,16 +220,20 @@ const Index = () => {
         }, 800);
         return true;
       }
-    } else if (playerAdvantage <= 0 || (cpuAdvantage <= 0 && playerAdvantage <= 0)) {
+    } else if (playerDefeated) {
+      // Player defeated
       setGameState('game_over');
       setPlayerSpriteState('defeat');
       soundPlayer.defeat();
       
-      if (cpuAdvantage <= 0 && playerAdvantage <= 0) {
+      if (enemyDefeated) {
+        // Both defeated - draw
         setEnemySpriteState('defeat');
         setHistoryLog(prev => [...prev, "<b>Mutual destruction.</b>"]);
         toast.error("Draw", { description: "Mutual destruction!" });
       } else {
+        // Player lost
+        setEnemySpriteState('victory');
         setHistoryLog(prev => [...prev, "<b>You were defeated.</b>"]);
         playSound('defeat');
         toast.error(concept?.defeatMsg || "Defeated!");
