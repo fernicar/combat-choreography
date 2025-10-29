@@ -5,7 +5,6 @@ import { AdvantageBar } from "@/components/game/AdvantageBar";
 import { CombatLog } from "@/components/game/CombatLog";
 import { GambitQueue } from "@/components/game/GambitQueue";
 import { HelpModal } from "@/components/game/HelpModal";
-import { Player } from "@/components/game/Player";
 import { GameConfigComponent } from "@/components/game/GameConfig";
 import { CharacterSprite } from "@/components/game/CharacterSprite";
 import { GameConfig, GameState, RoundEffect, GameConcept, GameRules } from "@/types/game";
