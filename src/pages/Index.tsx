@@ -137,11 +137,10 @@ const Index = () => {
     const newPlayerAdv = playerAdvantage + pDelta;
     const newCpuAdv = cpuAdvantage + cDelta;
 
-    // spriteA (action) phase: attack only if opponent loses advantage
-    // act1 (first action) behaves like skip => stays idle
-    const act1 = concept.actions[0];
-    const playerShouldAttack = cDelta < 0 && playerAction !== act1;
-    const enemyShouldAttack = pDelta < 0 && cpuAction !== act1;
+// spriteA (action) phase: attack on action unless it's act1 (skip)
+const act1 = concept.actions[0];
+const playerShouldAttack = playerAction !== act1;
+const enemyShouldAttack = cpuAction !== act1;
 
     setPlayerSpriteState(playerShouldAttack ? 'attack' : 'idle');
     if (playerShouldAttack) playActionSound(playerAction, concept.themeKey);
@@ -496,7 +495,7 @@ const Index = () => {
                   <ActionCard
                     key={action}
                     action={action}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isAnimating}
                     onAction={playRound}
                     themeKey={themeKey}
                     isDisabledByEnemy={
