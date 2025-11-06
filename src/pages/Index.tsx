@@ -297,8 +297,11 @@ const Index = () => {
 
       if (gameState !== 'playing') break;
 
-      // Stop if either player has reached 0 advantage
-      if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) break;
+      // Stop if either player has reached 0 advantage — also finalize outcome
+      if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) { 
+        checkWinLoss();
+        break; 
+      }
 
       const pAction = pQueue[i];
       const cAction = cQueue[i];
@@ -330,6 +333,11 @@ const Index = () => {
 
     // Grace period so last damage reflects before cleanup
     await new Promise(resolve => setTimeout(resolve, 150));
+
+    // Final win/loss check in case we exited early due to 0 advantage
+    if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) {
+      checkWinLoss();
+    }
 
     // Reset UI state for next gambit
     setCurrentGambitTurn(-1);
