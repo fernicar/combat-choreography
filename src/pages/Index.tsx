@@ -126,21 +126,23 @@ const Index = () => {
     setAiNextMove(getAiMove(currentConcept, disabledActions));
   };
 
-  const processTurn = (playerAction: string, cpuAction: string) => {
+  const processTurn = (playerAction: string, cpuAction: string, basePlayerAdv?: number, baseCpuAdv?: number) => {
     if (!gameRules || !concept || !playerAction || !cpuAction) return;
 
     // Block inputs during animation
     setIsAnimating(true);
 
-    // Compute outcome and resulting advantages upfront
+    // Compute outcome and resulting advantages upfront using provided bases when available
     const [pDelta, cDelta] = getOutcome(playerAction, cpuAction, gameRules);
-    const newPlayerAdv = playerAdvantage + pDelta;
-    const newCpuAdv = cpuAdvantage + cDelta;
+    const startingPlayerAdv = basePlayerAdv ?? playerAdvantage;
+    const startingCpuAdv = baseCpuAdv ?? cpuAdvantage;
+    const newPlayerAdv = startingPlayerAdv + pDelta;
+    const newCpuAdv = startingCpuAdv + cDelta;
 
-// spriteA (action) phase: attack on action unless it's act1 (skip)
-const act1 = concept.actions[0];
-const playerShouldAttack = playerAction !== act1;
-const enemyShouldAttack = cpuAction !== act1;
+    // spriteA (action) phase: attack on action unless it's act1 (skip)
+    const act1 = concept.actions[0];
+    const playerShouldAttack = playerAction !== act1;
+    const enemyShouldAttack = cpuAction !== act1;
 
     setPlayerSpriteState(playerShouldAttack ? 'attack' : 'idle');
     if (playerShouldAttack) playActionSound(playerAction, concept.themeKey);
@@ -185,8 +187,8 @@ const enemyShouldAttack = cpuAction !== act1;
       const pAdvStr = `${pDelta >= 0 ? '+' : ''}${pDelta}`;
       const cAdvStr = `${cDelta >= 0 ? '+' : ''}${cDelta}`;
       const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>
-        Player: ${playerAdvantage}→${newPlayerAdv} (${pAdvStr}) | 
-        Enemy: ${cpuAdvantage}→${newCpuAdv} (${cAdvStr})`;
+        Player: ${startingPlayerAdv}→${newPlayerAdv} (${pAdvStr}) | 
+        Enemy: ${startingCpuAdv}→${newCpuAdv} (${cAdvStr})`;
       setHistoryLog(prev => [...prev, roundSummary]);
 
       // Return to idle if no defeat/victory, then allow input
@@ -200,9 +202,7 @@ const enemyShouldAttack = cpuAction !== act1;
       }, 700);
     }, 400);
   };
-
-  const checkWinLoss = () => {
-    // Check for defeat/victory conditions
+    const checkWinLoss = () => {
     const playerDefeated = playerAdvantage <= 0;
     const enemyDefeated = cpuAdvantage <= 0;
     
@@ -304,20 +304,25 @@ const enemyShouldAttack = cpuAction !== act1;
       const cAction = cQueue[i];
       if (!pAction || !cAction) continue;
 
-      // Calculate deltas locally
+      // Calculate deltas locally from starting advantages
+      const startPlayerAdv = currentPlayerAdv;
+      const startCpuAdv = currentCpuAdv;
       const [pDelta, cDelta] = getOutcome(pAction, cAction, gameRules);
-      const newPlayerAdv = currentPlayerAdv + pDelta;
-      const newCpuAdv = currentCpuAdv + cDelta;
+      const newPlayerAdv = startPlayerAdv + pDelta;
+      const newCpuAdv = startCpuAdv + cDelta;
 
-      // Update local tracking
-      currentPlayerAdv = newPlayerAdv;
-      currentCpuAdv = newCpuAdv;
+      // Debug: log computed outcome for this gambit turn
+      console.log(`[Gambit] Turn ${i + 1}: P=${pAction} C=${cAction} | startAdv P:${startPlayerAdv} C:${startCpuAdv} | delta P:${pDelta} C:${cDelta} => newAdv P:${newPlayerAdv} C:${newCpuAdv}`);
 
-      // Process turn with state updates
-      processTurn(pAction, cAction);
+      // Process turn with explicit bases to avoid stale state
+      processTurn(pAction, cAction, startPlayerAdv, startCpuAdv);
       
       // Allow time for outcome computation and animations
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Update local tracking after animation
+      currentPlayerAdv = newPlayerAdv;
+      currentCpuAdv = newCpuAdv;
 
       // Check if game is over after this turn
       if (checkWinLoss()) break;
