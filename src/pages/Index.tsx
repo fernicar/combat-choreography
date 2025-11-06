@@ -287,20 +287,39 @@ const enemyShouldAttack = cpuAction !== act1;
     const cQueue = cQueueArg ?? [...cpuQueue];
     const turns = Math.min(config.gambitQueueSize, pQueue.length, cQueue.length);
 
+    // Track advantages locally to avoid stale state reads
+    let currentPlayerAdv = playerAdvantage;
+    let currentCpuAdv = cpuAdvantage;
+
     for (let i = 0; i < turns; i++) {
       setCurrentGambitTurn(i);
       await new Promise(resolve => setTimeout(resolve, 500));
 
       if (gameState !== 'playing') break;
 
+      // Stop if either player has reached 0 advantage
+      if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) break;
+
       const pAction = pQueue[i];
       const cAction = cQueue[i];
       if (!pAction || !cAction) continue;
 
+      // Calculate deltas locally
+      const [pDelta, cDelta] = getOutcome(pAction, cAction, gameRules);
+      const newPlayerAdv = currentPlayerAdv + pDelta;
+      const newCpuAdv = currentCpuAdv + cDelta;
+
+      // Update local tracking
+      currentPlayerAdv = newPlayerAdv;
+      currentCpuAdv = newCpuAdv;
+
+      // Process turn with state updates
       processTurn(pAction, cAction);
+      
       // Allow time for outcome computation and animations
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Check if game is over after this turn
       if (checkWinLoss()) break;
     }
 
