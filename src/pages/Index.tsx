@@ -202,9 +202,9 @@ const Index = () => {
       }, 700);
     }, 400);
   };
-    const checkWinLoss = () => {
-    const playerDefeated = playerAdvantage <= 0;
-    const enemyDefeated = cpuAdvantage <= 0;
+  const checkWinLoss = (pAdv?: number, cAdv?: number) => {
+    const playerDefeated = (pAdv ?? playerAdvantage) <= 0;
+    const enemyDefeated = (cAdv ?? cpuAdvantage) <= 0;
     
     if (enemyDefeated && !playerDefeated) {
       // Enemy defeated, player survives
@@ -299,7 +299,7 @@ const Index = () => {
 
       // Stop if either player has reached 0 advantage — also finalize outcome
       if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) { 
-        checkWinLoss();
+        checkWinLoss(currentPlayerAdv, currentCpuAdv);
         break; 
       }
 
@@ -328,7 +328,7 @@ const Index = () => {
       currentCpuAdv = newCpuAdv;
 
       // Check if game is over after this turn
-      if (checkWinLoss()) break;
+      if (checkWinLoss(currentPlayerAdv, currentCpuAdv)) break;
     }
 
     // Grace period so last damage reflects before cleanup
@@ -336,7 +336,7 @@ const Index = () => {
 
     // Final win/loss check in case we exited early due to 0 advantage
     if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) {
-      checkWinLoss();
+      checkWinLoss(currentPlayerAdv, currentCpuAdv);
     }
 
     // Reset UI state for next gambit
