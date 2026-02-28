@@ -397,7 +397,7 @@ const Index = () => {
   const themeKey = concept.themeKey;
   
   const backgrounds = {
-    dogflight: bgDogfight,
+    dogfight: bgDogfight,
     magic: bgMagic,
     brawling: bgBrawling,
   };

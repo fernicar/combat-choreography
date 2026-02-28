@@ -8,7 +8,7 @@ interface ActionCardProps {
   action: string;
   disabled: boolean;
   onAction: (action: string) => void;
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
   isDisabledByEnemy?: boolean;
 }
 
@@ -34,7 +34,7 @@ export function ActionCard({ action, disabled, onAction, themeKey, isDisabledByE
   };
 
   const themeColors = {
-    dogflight: 'from-theme-dogflight-primary to-theme-dogflight-secondary',
+    dogfight: 'from-theme-dogfight-primary to-theme-dogfight-secondary',
     magic: 'from-theme-magic-primary to-theme-magic-secondary',
     brawling: 'from-theme-brawling-primary to-theme-brawling-secondary'
   };

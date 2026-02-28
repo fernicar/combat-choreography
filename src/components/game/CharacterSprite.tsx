@@ -37,14 +37,14 @@ import magicEnemyVictory from "@/assets/magic_enemy_victory.png";
 import magicEnemyDefeat from "@/assets/magic_enemy_defeat.png";
 
 interface CharacterSpriteProps {
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
   isPlayer: boolean;
   state: 'idle' | 'attack' | 'hit' | 'victory' | 'defeat';
   advantage: number;
 }
 
 const spriteMap = {
-  dogflight: {
+  dogfight: {
     player: {
       idle: dogfightPlayerIdle,
       attack: dogfightPlayerAttack,

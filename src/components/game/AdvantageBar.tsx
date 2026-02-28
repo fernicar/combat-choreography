@@ -6,7 +6,7 @@ interface AdvantageBarProps {
   maxAdvantage: number;
   label: string;
   isPlayer: boolean;
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
   showHitEffect?: boolean;
 }
 
@@ -21,7 +21,7 @@ export function AdvantageBar({
   const percentage = Math.max(0, Math.min(100, (advantage / maxAdvantage) * 100));
   
   const themeColors = {
-    dogflight: 'bg-theme-dogflight-primary',
+    dogfight: 'bg-theme-dogfight-primary',
     magic: 'bg-theme-magic-primary',
     brawling: 'bg-theme-brawling-primary'
   };

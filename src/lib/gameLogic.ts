@@ -5,9 +5,9 @@ export const gameConcepts: Record<string, GameConcept> = {
     title: "Dogfight",
     icon: "✈️",
     defeatMsg: "MISSION FAILED",
-    actions: ["Claim to", "Dive Six", "Scissors", "Split-S", "Tight Turn"],
+    actions: ["Climb to", "Dive Six", "Scissors", "Split-S", "Tight Turn"],
     expPlaceholder: "attacks",
-    themeKey: 'dogflight'
+    themeKey: 'dogfight'
   },
   magicduel: {
     title: "Magic Duel",

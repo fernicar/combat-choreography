@@ -6,7 +6,7 @@ interface GambitQueueProps {
   label: string;
   isPlayer: boolean;
   currentTurn: number;
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
 }
 
 export function GambitQueue({ 
@@ -18,7 +18,7 @@ export function GambitQueue({
   themeKey 
 }: GambitQueueProps) {
   const themeColors = {
-    dogflight: 'border-theme-dogflight-primary',
+    dogfight: 'border-theme-dogfight-primary',
     magic: 'border-theme-magic-primary',
     brawling: 'border-theme-brawling-primary'
   };

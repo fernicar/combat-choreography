@@ -6,11 +6,11 @@ type PlayerState = 'idle' | 'hit' | 'attacking';
 interface PlayerProps {
   isPlayer: boolean;
   state: PlayerState;
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
 }
 
 const characters = {
-  dogflight: { player: '✈️', enemy: '💣' },
+  dogfight: { player: '✈️', enemy: '💣' },
   magic: { player: '🧙‍♂️', enemy: '🔥' },
   brawling: { player: '🥊', enemy: '💪' },
 };

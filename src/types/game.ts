@@ -6,7 +6,7 @@ export interface GameConcept {
   defeatMsg: string;
   actions: [string, string, string, string, string];
   expPlaceholder: string;
-  themeKey: 'dogflight' | 'magic' | 'brawling';
+  themeKey: 'dogfight' | 'magic' | 'brawling';
 }
 
 export interface GameConfig {

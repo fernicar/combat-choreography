@@ -51,7 +51,7 @@ class SoundGenerator {
   }
 
   // Dogfight sounds
-  dogfightClaimTo() {
+  dogfightClimbTo() {
     // Ascending engine sound
     this.playTone(200, 0.3, 'sawtooth', 0.25);
     setTimeout(() => this.playTone(300, 0.2, 'sawtooth', 0.2), 100);
@@ -186,7 +186,7 @@ export function playActionSound(action: string, themeKey: string) {
   if (!action) return; // Guard against undefined actions
   
   const actionLower = action.toLowerCase().replace(/[\s-]/g, '');
-  const themePrefix = themeKey === 'dogflight' ? 'dogflight' : themeKey;
+  const themePrefix = themeKey === 'dogfight' ? 'dogfight' : themeKey;
   const methodName = `${themePrefix}${action.replace(/[\s-]/g, '')}`;
   
   // Try exact match first
@@ -197,11 +197,11 @@ export function playActionSound(action: string, themeKey: string) {
 
   // Fallback mappings
   const soundMap: Record<string, () => void> = {
-    'dogflightclaimto': () => soundPlayer.dogfightClaimTo(),
-    'dogflightdivesix': () => soundPlayer.dogfightDiveSix(),
-    'dogflightscissors': () => soundPlayer.dogfightScissors(),
-    'dogflightsplits': () => soundPlayer.dogfightSplitS(),
-    'dogflighttightturn': () => soundPlayer.dogfightTightTurn(),
+    'dogfightclimbto': () => soundPlayer.dogfightClimbTo(),
+    'dogfightdivesix': () => soundPlayer.dogfightDiveSix(),
+    'dogfightscissors': () => soundPlayer.dogfightScissors(),
+    'dogfightsplits': () => soundPlayer.dogfightSplitS(),
+    'dogfighttightturn': () => soundPlayer.dogfightTightTurn(),
     'magiccharge': () => soundPlayer.magicCharge(),
     'magiccounter': () => soundPlayer.magicCounter(),
     'magicfry': () => soundPlayer.magicFry(),
