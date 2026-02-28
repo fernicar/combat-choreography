@@ -9,7 +9,7 @@ import { GameConfigComponent } from "@/components/game/GameConfig";
 import { CharacterSprite } from "@/components/game/CharacterSprite";
 import { GameConfig, GameState, RoundEffect, GameConcept, GameRules } from "@/types/game";
 import { playSound } from "@/lib/audio";
-import { buildRules, getOutcome, getRandomConcept, shuffleArray } from "@/lib/gameLogic";
+import { buildRules, getOutcome, gameConcepts, getRandomConcept, shuffleArray } from "@/lib/gameLogic";
 import { Settings, HelpCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { playActionSound, soundPlayer } from "@/lib/sounds";
@@ -26,6 +26,7 @@ const defaultConfig: GameConfig = {
   gambitQueueSize: 1,
   isDebug: false,
   isSelfSabotaged: false,
+  theme: 'dogfight',
 };
 
 const Index = () => {
@@ -153,7 +154,7 @@ const Index = () => {
 
   const initializeGame = useCallback(() => {
     playSound('game-start');
-    const newConcept = getRandomConcept();
+    const newConcept = gameConcepts[config.theme];
     const newRules = buildRules(newConcept.actions, newConcept.expPlaceholder);
     setConcept(newConcept);
     setGameRules(newRules);

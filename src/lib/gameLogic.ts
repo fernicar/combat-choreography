@@ -9,7 +9,7 @@ export const gameConcepts: Record<string, GameConcept> = {
     expPlaceholder: "attacks",
     themeKey: 'dogfight'
   },
-  magicduel: {
+  magic: {
     title: "Magic Duel",
     icon: "🧙",
     defeatMsg: "VANQUISHED",
@@ -17,7 +17,7 @@ export const gameConcepts: Record<string, GameConcept> = {
     expPlaceholder: "spell",
     themeKey: 'magic'
   },
-  brawlingmatch: {
+  brawling: {
     title: "Brawling Match",
     icon: "🥊",
     defeatMsg: "KNOCKED OUT",

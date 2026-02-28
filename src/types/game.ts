@@ -1,4 +1,4 @@
-export type GameTheme = 'dogfight' | 'magicduel' | 'brawlingmatch';
+export type GameTheme = 'dogfight' | 'magic' | 'brawling';
 
 export interface GameConcept {
   title: string;
@@ -16,6 +16,7 @@ export interface GameConfig {
   gambitQueueSize: number;
   isDebug: boolean;
   isSelfSabotaged: boolean;
+  theme: GameTheme;
   cpuAdvantageLevels?: number[];
 }
 

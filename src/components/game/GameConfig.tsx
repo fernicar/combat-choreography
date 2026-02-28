@@ -1,8 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { GameConfig } from "@/types/game";
+import { GameConfig, GameTheme } from "@/types/game";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GameConfigProps {
   config: GameConfig;
@@ -12,7 +14,7 @@ interface GameConfigProps {
 }
 
 export function GameConfigComponent({ config, onConfigChange, onStartGame, onSetDefaults }: GameConfigProps) {
-  const updateConfig = (key: keyof GameConfig, value: number | boolean) => {
+  const updateConfig = (key: keyof GameConfig, value: number | boolean | GameTheme) => {
     onConfigChange({ ...config, [key]: value });
   };
 
@@ -23,6 +25,19 @@ export function GameConfigComponent({ config, onConfigChange, onStartGame, onSet
       </h2>
 
       <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Theme selected</Label>
+          <Select value={config.theme} onValueChange={(value) => updateConfig('theme', value as GameTheme)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dogfight">Dogfight</SelectItem>
+              <SelectItem value="magic">Magic Duel</SelectItem>
+              <SelectItem value="brawling">Brawling Match</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-2">
           <div className="flex justify-between">
             <Label>Number of Enemies</Label>
@@ -109,3 +124,5 @@ export function GameConfigComponent({ config, onConfigChange, onStartGame, onSet
     </div>
   );
 }
+
+
