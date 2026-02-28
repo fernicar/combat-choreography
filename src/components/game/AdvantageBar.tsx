@@ -20,10 +20,10 @@ export function AdvantageBar({
 }: AdvantageBarProps) {
   const percentage = Math.max(0, Math.min(100, (advantage / maxAdvantage) * 100));
   
-  const themeColors = {
-    dogfight: 'bg-theme-dogfight-primary',
-    magic: 'bg-theme-magic-primary',
-    brawling: 'bg-theme-brawling-primary'
+  const themeTextColors = {
+    dogfight: 'text-theme-dogfight-primary',
+    magic: 'text-theme-magic-primary',
+    brawling: 'text-theme-brawling-primary'
   };
 
   return (
@@ -34,8 +34,10 @@ export function AdvantageBar({
         </span>
         <span className={cn(
           "text-2xl font-bold tabular-nums",
-          advantage <= 3 && "text-destructive animate-pulse-glow",
-          advantage > 3 && themeColors[themeKey]
+          {
+            'text-destructive animate-pulse': advantage <= 3,
+            [themeTextColors[themeKey]]: advantage > 3
+          }
         )}>
           {advantage}
         </span>

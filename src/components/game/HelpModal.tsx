@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -20,12 +21,11 @@ export function HelpModal({ isOpen, onClose, actions, expPlaceholder }: HelpModa
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">How to Play: The Two-Layer System</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 text-sm">
-          <p className="text-muted-foreground">
+          <DialogDescription>
             The outcome of every turn is calculated by adding two layers together.
-          </p>
-          
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 text-sm pt-4">
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-primary">Layer 1: The Base Outcome</h3>
             <p>

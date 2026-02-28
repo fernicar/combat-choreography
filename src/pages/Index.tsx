@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ActionCard } from "@/components/game/ActionCard";
 import { AdvantageBar } from "@/components/game/AdvantageBar";
@@ -10,7 +10,6 @@ import { CharacterSprite } from "@/components/game/CharacterSprite";
 import { GameConfig, GameState, RoundEffect, GameConcept, GameRules } from "@/types/game";
 import { playSound } from "@/lib/audio";
 import { buildRules, getOutcome, getRandomConcept, shuffleArray } from "@/lib/gameLogic";
-import { motion } from 'framer-motion';
 import { Settings, HelpCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { playActionSound, soundPlayer } from "@/lib/sounds";
@@ -53,20 +52,111 @@ const Index = () => {
   
   const [showHelp, setShowHelp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
   
-  const [playerSpriteState, setPlayerSpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
-  const [enemySpriteState, setEnemySpriteState] = useState<'idle' | 'attack' | 'hit' | 'victory' | 'defeat'>('idle');
+  const [playerActionState, setPlayerActionState] = useState<'idle' | 'attack' | 'victory' | 'defeat'>('idle');
+  const [enemyActionState, setEnemyActionState] = useState<'idle' | 'attack' | 'victory' | 'defeat'>('idle');
+  const [playerIsHit, setPlayerIsHit] = useState(false);
+  const [enemyIsHit, setEnemyIsHit] = useState(false);
 
-  const [playerState, setPlayerState] = useState<'idle' | 'hit' | 'attacking'>('idle');
-  const [enemyState, setEnemyState] = useState<'idle' | 'hit' | 'attacking'>('idle');
-  const [isShaking, setIsShaking] = useState(false);
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-  const initializeGame = () => {
+  const prepareNextAiMove = useCallback((currentConcept: GameConcept, disabledActions: string[]) => {
+    if (!gameRules) return;
+    const availableActions = currentConcept.actions.filter(a => !disabledActions.includes(a));
+    const expansionActions = Object.keys(gameRules.expansionActions);
+    const availableExpansion = availableActions.filter(a => expansionActions.includes(a));
+    const availableBase = availableActions.filter(a => !expansionActions.includes(a));
+    
+    const isExpansionRoll = Math.random() < (availableExpansion.length / availableActions.length);
+    
+    let move: string;
+    if (isExpansionRoll && availableExpansion.length > 0) {
+      move = availableExpansion[Math.floor(Math.random() * availableExpansion.length)];
+    } else if (availableBase.length > 0) {
+      const filtered = availableBase.filter(a => a !== gameRules.expPlaceholder);
+      move = filtered.length > 0 
+        ? filtered[Math.floor(Math.random() * filtered.length)]
+        : availableExpansion[Math.floor(Math.random() * availableExpansion.length)];
+    } else {
+      move = availableActions[0];
+    }
+    setAiNextMove(move);
+  }, [gameRules]);
+
+  const nextEnemy = useCallback(() => {
+    if (!concept || !config.cpuAdvantageLevels) return;
+    
+    setHistoryLog(prev => [...prev, `<b>--- Opponent #${currentCpuIndex + 1} Defeated! ---</b>`]);
+    
+    const nextIndex = currentCpuIndex + 1;
+    setCurrentCpuIndex(nextIndex);
+    setPlayerAdvantage(10);
+    setCpuAdvantage(config.cpuAdvantageLevels[nextIndex]);
+    
+    setHistoryLog(prev => [...prev, `Opponent #${nextIndex + 1} appears.`]);
+    
+    const shuffled = shuffleArray([...concept.actions]);
+    const disabled = shuffled.slice(0, config.sabotageCount);
+    setEnemyDisabledActions(disabled);
+    
+    setPlayerIsHit(false);
+    setEnemyIsHit(false);
+    setPlayerActionState('idle');
+    setEnemyActionState('idle');
+
+    if (config.isDebug) {
+      prepareNextAiMove(concept, disabled);
+    }
+    
+    toast.info("Next opponent!", { description: `Facing opponent #${nextIndex + 1}` });
+  }, [concept, config, currentCpuIndex, prepareNextAiMove]);
+
+  const checkWinLoss = useCallback((pAdv: number, cAdv: number): boolean => {
+    const playerDefeated = pAdv <= 0;
+    const enemyDefeated = cAdv <= 0;
+
+    if (playerDefeated || enemyDefeated) {
+      if (playerDefeated && enemyDefeated) {
+        setPlayerActionState('defeat');
+        setEnemyActionState('defeat');
+        setHistoryLog(prev => [...prev, "<b>Mutual destruction.</b>"]);
+        toast.error("Draw", { description: "Mutual destruction!" });
+      } else if (playerDefeated) {
+        setPlayerActionState('defeat');
+        setEnemyActionState('victory');
+        setHistoryLog(prev => [...prev, "<b>You were defeated.</b>"]);
+        toast.error(concept?.defeatMsg || "Defeated!");
+      } else {
+        setPlayerActionState('victory');
+        setEnemyActionState('defeat');
+        if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
+          setGameState('victory');
+          toast.success("Victory!", { description: "You've defeated all enemies!" });
+        } else {
+          setTimeout(nextEnemy, 1500);
+        }
+      }
+      
+      if(playerDefeated) {
+        setGameState('game_over');
+        soundPlayer.defeat();
+      } else {
+        soundPlayer.enemyDefeated();
+        if (currentCpuIndex >= config.numEnemies - 1) {
+          soundPlayer.victory();
+        }
+      }
+      return true;
+    }
+    return false;
+  }, [concept, config.numEnemies, currentCpuIndex, nextEnemy]);
+
+  const initializeGame = useCallback(() => {
     playSound('game-start');
     const newConcept = getRandomConcept();
+    const newRules = buildRules(newConcept.actions, newConcept.expPlaceholder);
     setConcept(newConcept);
-    setGameRules(buildRules(newConcept.actions, newConcept.expPlaceholder));
+    setGameRules(newRules);
     
     setPlayerAdvantage(10);
     setCurrentCpuIndex(0);
@@ -76,7 +166,7 @@ const Index = () => {
       (_, i) => config.firstEnemyAdvantage + (i * 3)
     );
     setCpuAdvantage(cpuLevels[0]);
-    setConfig({ ...config, cpuAdvantageLevels: cpuLevels });
+    setConfig(prev => ({ ...prev, cpuAdvantageLevels: cpuLevels }));
     
     setGameState('playing');
     setHistoryLog(["The engagement begins. Choose your action."]);
@@ -86,23 +176,27 @@ const Index = () => {
     );
     
     const shuffled = shuffleArray([...newConcept.actions]);
-    setEnemyDisabledActions(shuffled.slice(0, config.sabotageCount));
+    const disabled = shuffled.slice(0, config.sabotageCount);
+    setEnemyDisabledActions(disabled);
     
     setPlayerQueue([]);
     setCpuQueue([]);
     setCurrentGambitTurn(-1);
     setRoundEffect(null);
+    setPlayerIsHit(false);
+    setEnemyIsHit(false);
+    setPlayerActionState('idle');
+    setEnemyActionState('idle');
     
     setAppState('game');
     
     if (config.isDebug) {
-      prepareNextAiMove(newConcept, shuffled.slice(0, config.sabotageCount));
+      prepareNextAiMove(newConcept, disabled);
     }
-  };
+  }, [config, prepareNextAiMove]);
 
   const getAiMove = (currentConcept: GameConcept, disabledActions: string[]): string => {
     if (!gameRules) return currentConcept.actions[0];
-    
     const availableActions = currentConcept.actions.filter(a => !disabledActions.includes(a));
     const expansionActions = Object.keys(gameRules.expansionActions);
     const availableExpansion = availableActions.filter(a => expansionActions.includes(a));
@@ -117,267 +211,150 @@ const Index = () => {
       return filtered.length > 0 
         ? filtered[Math.floor(Math.random() * filtered.length)]
         : availableExpansion[Math.floor(Math.random() * availableExpansion.length)];
+    } else {
+        return availableActions[0];
     }
-    
-    return availableActions[0];
   };
 
-  const prepareNextAiMove = (currentConcept: GameConcept, disabledActions: string[]) => {
-    setAiNextMove(getAiMove(currentConcept, disabledActions));
-  };
+  const processTurn = useCallback(async (playerAction: string, cpuAction: string, basePlayerAdv?: number, baseCpuAdv?: number): Promise<[boolean, number, number]> => {
+    if (!gameRules || !concept) {
+      return [false, playerAdvantage, cpuAdvantage];
+    }
 
-  const processTurn = (playerAction: string, cpuAction: string, basePlayerAdv?: number, baseCpuAdv?: number) => {
-    if (!gameRules || !concept || !playerAction || !cpuAction) return;
-
-    // Block inputs during animation
-    setIsAnimating(true);
-
-    // Compute outcome and resulting advantages upfront using provided bases when available
     const [pDelta, cDelta] = getOutcome(playerAction, cpuAction, gameRules);
     const startingPlayerAdv = basePlayerAdv ?? playerAdvantage;
     const startingCpuAdv = baseCpuAdv ?? cpuAdvantage;
     const newPlayerAdv = startingPlayerAdv + pDelta;
     const newCpuAdv = startingCpuAdv + cDelta;
 
-    // spriteA (action) phase: attack on action unless it's act1 (skip)
-    const act1 = concept.actions[0];
-    const playerShouldAttack = playerAction !== act1;
-    const enemyShouldAttack = cpuAction !== act1;
+    const playerAttacks = cDelta <= -2;
+    const enemyAttacks = pDelta <= -2;
+    const playerGetsHit = pDelta <= -2;
+    const enemyGetsHit = cDelta <= -2;
 
-    setPlayerSpriteState(playerShouldAttack ? 'attack' : 'idle');
-    if (playerShouldAttack) playActionSound(playerAction, concept.themeKey);
+    // Animation Timeline
+    if (playerAttacks) {
+      setPlayerActionState('attack');
+      playActionSound(playerAction, concept.themeKey);
+    }
+    await delay(playerAttacks && enemyAttacks ? 300 : 0); // Stagger if both attack
 
-    setTimeout(() => {
-      setEnemySpriteState(enemyShouldAttack ? 'attack' : 'idle');
-      if (enemyShouldAttack) playActionSound(cpuAction, concept.themeKey);
-    }, 150);
+    if (enemyAttacks) {
+      setEnemyActionState('attack');
+      playActionSound(cpuAction, concept.themeKey);
+    }
+    await delay(600); // Attack animation duration
 
-    // spriteB (outcome) phase
-    setTimeout(() => {
-      // Player spriteB outcome
-      if (newPlayerAdv <= 0) {
-        setPlayerSpriteState('defeat');
-      } else if (newCpuAdv <= 0) {
-        setPlayerSpriteState('victory');
-      } else if (pDelta <= -2) {
-        setPlayerSpriteState('hit');
-        soundPlayer.hitImpact(pDelta);
-      } else {
-        setPlayerSpriteState('idle'); // -1 => idle, +advantage => idle
-      }
+    // Reset attack states
+    if (playerAttacks) setPlayerActionState('idle');
+    if (enemyAttacks) setEnemyActionState('idle');
 
-      // Enemy spriteB outcome
-      if (newCpuAdv <= 0) {
-        setEnemySpriteState('defeat');
-      } else if (newPlayerAdv <= 0) {
-        setEnemySpriteState('victory');
-      } else if (cDelta <= -2) {
-        setEnemySpriteState('hit');
-        soundPlayer.hitImpact(cDelta);
-      } else {
-        setEnemySpriteState('idle');
-      }
+    // Update advantages and log
+    setPlayerAdvantage(newPlayerAdv);
+    setCpuAdvantage(newCpuAdv);
+    const pAdvStr = `${pDelta >= 0 ? '+' : ''}${pDelta}`;
+    const cAdvStr = `${cDelta >= 0 ? '+' : ''}${cDelta}`;
+    const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>Player: ${startingPlayerAdv}→${newPlayerAdv} (${pAdvStr}) | Enemy: ${startingCpuAdv}→${newCpuAdv} (${cAdvStr})`;
+    setHistoryLog(prev => [...prev, roundSummary]);
 
-      // Apply state updates and log
-      setPlayerAdvantage(newPlayerAdv);
-      setCpuAdvantage(newCpuAdv);
-      setRoundEffect({ player: pDelta <= -2, enemy: cDelta <= -2 });
-      setTimeout(() => setRoundEffect(null), 500);
+    // Show hit animations if not defeated
+    if (enemyGetsHit && newCpuAdv > 0) {
+      setEnemyIsHit(true);
+      soundPlayer.hitImpact(cDelta);
+    }
+    await delay(enemyGetsHit && playerGetsHit ? 300 : 0); // Stagger hits
 
-      const pAdvStr = `${pDelta >= 0 ? '+' : ''}${pDelta}`;
-      const cAdvStr = `${cDelta >= 0 ? '+' : ''}${cDelta}`;
-      const roundSummary = `You: ${playerAction} | Enemy: ${cpuAction}<br>
-        Player: ${startingPlayerAdv}→${newPlayerAdv} (${pAdvStr}) | 
-        Enemy: ${startingCpuAdv}→${newCpuAdv} (${cAdvStr})`;
-      setHistoryLog(prev => [...prev, roundSummary]);
-
-      // Return to idle if no defeat/victory, then allow input
-      const someoneDefeated = newPlayerAdv <= 0 || newCpuAdv <= 0;
-      setTimeout(() => {
-        if (!someoneDefeated) {
-          setPlayerSpriteState('idle');
-          setEnemySpriteState('idle');
-        }
-        setIsAnimating(false);
-      }, 700);
-    }, 400);
-  };
-    const checkWinLoss = () => {
-    const playerDefeated = playerAdvantage <= 0;
-    const enemyDefeated = cpuAdvantage <= 0;
-    
-    if (enemyDefeated && !playerDefeated) {
-      // Enemy defeated, player survives
-      setEnemySpriteState('defeat');
-      soundPlayer.enemyDefeated();
-      
-      if (config.numEnemies === 1 || currentCpuIndex >= config.numEnemies - 1) {
-        // Final victory
-        setGameState('victory');
-        setPlayerSpriteState('victory');
-        soundPlayer.victory();
-        toast.success("Victory!", { description: "You've defeated all enemies!" });
-        return true;
-      } else {
-        // Next enemy
-        setTimeout(() => {
-          setPlayerSpriteState('idle');
-          setEnemySpriteState('idle');
-          nextEnemy();
-        }, 800);
-        return true;
-      }
-    } else if (playerDefeated) {
-      // Player defeated
-      setGameState('game_over');
-      setPlayerSpriteState('defeat');
-      soundPlayer.defeat();
-      
-      if (enemyDefeated) {
-        // Both defeated - draw
-        setEnemySpriteState('defeat');
-        setHistoryLog(prev => [...prev, "<b>Mutual destruction.</b>"]);
-        toast.error("Draw", { description: "Mutual destruction!" });
-      } else {
-        // Player lost
-        setEnemySpriteState('victory');
-        setHistoryLog(prev => [...prev, "<b>You were defeated.</b>"]);
-        playSound('defeat');
-        toast.error(concept?.defeatMsg || "Defeated!");
-      }
-      return true;
+    if (playerGetsHit && newPlayerAdv > 0) {
+      setPlayerIsHit(true);
+      soundPlayer.hitImpact(pDelta);
     }
     
-    if (config.isDebug && gameState === 'playing' && concept) {
+    setRoundEffect({ player: playerGetsHit && newPlayerAdv > 0, enemy: enemyGetsHit && newCpuAdv > 0 });
+    await delay(400);
+    setRoundEffect(null);
+
+    const isGameOver = checkWinLoss(newPlayerAdv, newCpuAdv);
+    if (!isGameOver && config.isDebug) {
       prepareNextAiMove(concept, enemyDisabledActions);
     }
     
-    return false;
-  };
+    return [isGameOver, newPlayerAdv, newCpuAdv];
+  }, [concept, gameRules, playerAdvantage, cpuAdvantage, config.isDebug, enemyDisabledActions, checkWinLoss, prepareNextAiMove]);
 
-  const nextEnemy = () => {
-    if (!concept || !config.cpuAdvantageLevels) return;
-    
-    setHistoryLog(prev => [...prev, `<b>--- Opponent #${currentCpuIndex + 1} Defeated! ---</b>`]);
-    
-    const nextIndex = currentCpuIndex + 1;
-    setCurrentCpuIndex(nextIndex);
-    setPlayerAdvantage(10);
-    setCpuAdvantage(config.cpuAdvantageLevels[nextIndex]);
-    
-    setHistoryLog(prev => [...prev, `Opponent #${nextIndex + 1} appears.`]);
-    
-    const shuffled = shuffleArray([...concept.actions]);
-    setEnemyDisabledActions(shuffled.slice(0, config.sabotageCount));
-    
-    if (config.isDebug) {
-      prepareNextAiMove(concept, shuffled.slice(0, config.sabotageCount));
-    }
-    
-    toast.info("Next opponent!", { description: `Facing opponent #${nextIndex + 1}` });
-  };
-
-  const resolveGambit = async (pQueueArg?: string[], cQueueArg?: string[]) => {
+  const resolveGambit = useCallback(async (pQueueArg?: string[], cQueueArg?: string[]) => {
     if (!concept) return;
     
     setIsProcessing(true);
 
-    // Use provided snapshots if available to avoid state timing issues
     const pQueue = pQueueArg ?? [...playerQueue];
     const cQueue = cQueueArg ?? [...cpuQueue];
     const turns = Math.min(config.gambitQueueSize, pQueue.length, cQueue.length);
 
-    // Track advantages locally to avoid stale state reads
-    let currentPlayerAdv = playerAdvantage;
-    let currentCpuAdv = cpuAdvantage;
+    let currentPAdv = playerAdvantage;
+    let currentCAdv = cpuAdvantage;
 
     for (let i = 0; i < turns; i++) {
       setCurrentGambitTurn(i);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      if (gameState !== 'playing') break;
-
-      // Stop if either player has reached 0 advantage — also finalize outcome
-      if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) { 
-        checkWinLoss();
-        break; 
-      }
+      setPlayerIsHit(false);
+      setEnemyIsHit(false);
+      setPlayerActionState('idle');
+      setEnemyActionState('idle');
+      
+      await delay(250);
 
       const pAction = pQueue[i];
       const cAction = cQueue[i];
       if (!pAction || !cAction) continue;
 
-      // Calculate deltas locally from starting advantages
-      const startPlayerAdv = currentPlayerAdv;
-      const startCpuAdv = currentCpuAdv;
-      const [pDelta, cDelta] = getOutcome(pAction, cAction, gameRules);
-      const newPlayerAdv = startPlayerAdv + pDelta;
-      const newCpuAdv = startCpuAdv + cDelta;
-
-      // Debug: log computed outcome for this gambit turn
-      console.log(`[Gambit] Turn ${i + 1}: P=${pAction} C=${cAction} | startAdv P:${startPlayerAdv} C:${startCpuAdv} | delta P:${pDelta} C:${cDelta} => newAdv P:${newPlayerAdv} C:${newCpuAdv}`);
-
-      // Process turn with explicit bases to avoid stale state
-      processTurn(pAction, cAction, startPlayerAdv, startCpuAdv);
+      const [isGameOver, newPAdv, newCAdv] = await processTurn(pAction, cAction, currentPAdv, currentCAdv);
       
-      // Allow time for outcome computation and animations
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      currentPAdv = newPAdv;
+      currentCAdv = newCAdv;
 
-      // Update local tracking after animation
-      currentPlayerAdv = newPlayerAdv;
-      currentCpuAdv = newCpuAdv;
-
-      // Check if game is over after this turn
-      if (checkWinLoss()) break;
+      await delay(1000);
+      
+      if (isGameOver) break;
     }
 
-    // Grace period so last damage reflects before cleanup
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    // Final win/loss check in case we exited early due to 0 advantage
-    if (currentPlayerAdv <= 0 || currentCpuAdv <= 0) {
-      checkWinLoss();
-    }
-
-    // Reset UI state for next gambit
     setCurrentGambitTurn(-1);
     setPlayerQueue([]);
     setCpuQueue([]);
     setIsProcessing(false);
-  };
+  }, [concept, config.gambitQueueSize, playerAdvantage, cpuAdvantage, playerQueue, cpuQueue, processTurn]);
 
-  const playRound = (playerAction: string) => {
-    if (gameState !== 'playing' || isProcessing || isAnimating || !concept) return;
+  const playRound = useCallback(async (playerAction: string) => {
+    if (gameState !== 'playing' || isProcessing || !concept) return;
 
-    playSound('action');
-    setPlayerState('attacking');
-    setEnemyState('attacking');
-    
+    setIsProcessing(true);
+    setPlayerIsHit(false);
+    setEnemyIsHit(false);
+    setPlayerActionState('idle');
+    setEnemyActionState('idle');
+
+    await delay(100); // Brief pause to show reset
+
     if (config.gambitQueueSize > 1) {
-      if (playerQueue.length < config.gambitQueueSize) {
-        const cpuActionNext = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
-        const nextPlayerQueue = [...playerQueue, playerAction];
-        const nextCpuQueue = [...cpuQueue, cpuActionNext];
+      const cpuActionNext = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
+      const nextPlayerQueue = [...playerQueue, playerAction];
+      const nextCpuQueue = [...cpuQueue, cpuActionNext];
 
-        setPlayerQueue(nextPlayerQueue);
-        setCpuQueue(nextCpuQueue);
+      setPlayerQueue(nextPlayerQueue);
+      setCpuQueue(nextCpuQueue);
 
-        const nextLength = nextPlayerQueue.length;
-        if (nextLength === config.gambitQueueSize) {
-          // Run with snapshots to include the just-added final action
-          setTimeout(() => resolveGambit(nextPlayerQueue, nextCpuQueue), 50);
+      if (nextPlayerQueue.length === config.gambitQueueSize) {
+        await resolveGambit(nextPlayerQueue, nextCpuQueue);
+      } else {
+        if (config.isDebug) {
+          prepareNextAiMove(concept, enemyDisabledActions);
         }
       }
-      return;
+    } else {
+      const cpuAction = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
+      await processTurn(playerAction, cpuAction);
     }
     
-    const cpuAction = config.isDebug ? aiNextMove : getAiMove(concept, enemyDisabledActions);
-
-    setTimeout(() => {
-      processTurn(playerAction, cpuAction);
-      setTimeout(checkWinLoss, 500);
-    }, 750);
-  };
+    setIsProcessing(false);
+  }, [gameState, isProcessing, concept, config, playerQueue, cpuQueue, aiNextMove, enemyDisabledActions, resolveGambit, processTurn, prepareNextAiMove]);
 
   if (appState === 'menu') {
     return (
@@ -395,20 +372,7 @@ const Index = () => {
   if (!concept || !gameRules) return null;
 
   const themeKey = concept.themeKey;
-  
-  const backgrounds = {
-    dogfight: bgDogfight,
-    magic: bgMagic,
-    brawling: bgBrawling,
-  };
-
-  const shakeVariants = {
-    shaking: {
-      x: [-5, 5, -5, 5, 0],
-      transition: { duration: 0.3 }
-    },
-    idle: { x: 0 }
-  };
+  const backgrounds = { dogfight: bgDogfight, magic: bgMagic, brawling: bgBrawling };
 
   return (
     <div 
@@ -420,20 +384,18 @@ const Index = () => {
         backgroundAttachment: 'fixed',
       }}
     >
-      <motion.div 
-        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
-        variants={shakeVariants}
-        animate={isShaking ? "shaking" : "idle"}
-      />
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
       <div className="max-w-6xl mx-auto space-y-6 relative z-10">
-        {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            {concept.icon} {concept.title}
+          <h1 className="text-4xl font-bold">
+            {concept.icon} <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">{concept.title}</span>
           </h1>
           <div className="flex gap-2">
             <Button onClick={() => setShowHelp(true)} size="icon" variant="outline">
               <HelpCircle className="w-5 h-5" />
+            </Button>
+            <Button onClick={initializeGame} size="icon" variant="outline">
+              <RotateCcw className="w-5 h-5" />
             </Button>
             <Button onClick={() => setAppState('menu')} size="icon" variant="outline">
               <Settings className="w-5 h-5" />
@@ -442,12 +404,11 @@ const Index = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Combat Info */}
           <div className="space-y-6">
             <div className="bg-card/50 backdrop-blur-sm rounded-lg border-2 border-destructive/20 p-4">
               <AdvantageBar
                 advantage={cpuAdvantage}
-                maxAdvantage={config.firstEnemyAdvantage + (currentCpuIndex * 3)}
+                maxAdvantage={config.cpuAdvantageLevels ? config.cpuAdvantageLevels[currentCpuIndex] : config.firstEnemyAdvantage}
                 label={`Enemy ${currentCpuIndex + 1}/${config.numEnemies}`}
                 isPlayer={false}
                 themeKey={themeKey}
@@ -493,17 +454,15 @@ const Index = () => {
             )}
           </div>
 
-          {/* Center Column - Actions & Status */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Character Sprites */}
             <div className="bg-card/30 backdrop-blur-md rounded-lg border-2 border-primary/20 p-6">
               <div className="grid grid-cols-2 gap-8">
                 <div className="text-center">
                   <CharacterSprite
                     themeKey={themeKey}
                     isPlayer={true}
-                    state={playerSpriteState}
-                    advantage={playerAdvantage}
+                    actionState={playerActionState}
+                    isHit={playerIsHit}
                   />
                   <p className="text-sm font-semibold mt-2 text-success">PLAYER</p>
                 </div>
@@ -511,8 +470,8 @@ const Index = () => {
                   <CharacterSprite
                     themeKey={themeKey}
                     isPlayer={false}
-                    state={enemySpriteState}
-                    advantage={cpuAdvantage}
+                    actionState={enemyActionState}
+                    isHit={enemyIsHit}
                   />
                   <p className="text-sm font-semibold mt-2 text-destructive">ENEMY {currentCpuIndex + 1}</p>
                 </div>
@@ -527,7 +486,7 @@ const Index = () => {
                   <ActionCard
                     key={action}
                     action={action}
-                    disabled={isProcessing || isAnimating}
+                    disabled={isProcessing}
                     onAction={playRound}
                     themeKey={themeKey}
                     isDisabledByEnemy={
@@ -546,8 +505,8 @@ const Index = () => {
                     : 'text-destructive'
                 }`}>
                   {gameState === 'victory' 
-                    ? (config.numEnemies === 1 ? `FINAL SCORE: ${playerAdvantage}` : 'VICTORY!') 
-                    : concept.defeatMsg
+                    ? (config.numEnemies > 1 ? 'VICTORY!' : `FINAL SCORE: ${playerAdvantage}`)
+                    : (concept?.defeatMsg || 'DEFEATED')
                   }
                 </h2>
                 <Button 
@@ -556,7 +515,7 @@ const Index = () => {
                   className="bg-gradient-to-r from-primary to-accent"
                 >
                   <RotateCcw className="w-5 h-5 mr-2" />
-                  Restart
+                  Play Again
                 </Button>
               </div>
             )}

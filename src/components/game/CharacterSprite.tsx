@@ -39,8 +39,8 @@ import magicEnemyDefeat from "@/assets/magic_enemy_defeat.png";
 interface CharacterSpriteProps {
   themeKey: 'dogfight' | 'magic' | 'brawling';
   isPlayer: boolean;
-  state: 'idle' | 'attack' | 'hit' | 'victory' | 'defeat';
-  advantage: number;
+  actionState: 'idle' | 'attack' | 'victory' | 'defeat';
+  isHit: boolean;
 }
 
 const spriteMap = {
@@ -94,34 +94,30 @@ const spriteMap = {
   },
 };
 
-// Preload all images
-const preloadImages = () => {
-  const allSprites = Object.values(spriteMap).flatMap(theme =>
-    Object.values(theme).flatMap(character =>
-      Object.values(character)
-    )
-  );
-  
-  allSprites.forEach(src => {
-    const img = new Image();
-    img.src = src;
-  });
-};
-
-export function CharacterSprite({ themeKey, isPlayer, state }: CharacterSpriteProps) {
+export function CharacterSprite({ themeKey, isPlayer, actionState, isHit }: CharacterSpriteProps) {
   useEffect(() => {
-    preloadImages();
+    // Preload images
+    const allSprites = Object.values(spriteMap).flatMap(theme =>
+      Object.values(theme).flatMap(character =>
+        Object.values(character)
+      )
+    );
+    allSprites.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
   }, []);
 
   const character = isPlayer ? 'player' : 'enemy';
-  const sprite = spriteMap[themeKey][character][state];
+  const resolvedState = isHit ? 'hit' : actionState;
+  const sprite = spriteMap[themeKey][character][resolvedState];
 
   return (
     <div className="relative flex items-center justify-center h-48">
       <img
         src={sprite}
-        alt={`${isPlayer ? 'Player' : 'Enemy'} - ${state}`}
-        className="h-40 w-40 object-contain transition-opacity duration-200"
+        alt={`${isPlayer ? 'Player' : 'Enemy'} - ${resolvedState}`}
+        className={`h-40 w-40 object-contain transition-transform duration-150 ease-in-out ${isHit ? 'animate-shake' : ''}`}
       />
     </div>
   );
